@@ -1,0 +1,67 @@
+
+
+##### 托管与非托管资源
+
+托管资源：托管资源指的是.NET可以自动进行回收的资源，主要是指托管堆上分配的内存资源；
+
+非托管资源：
+
+- .NET不知道如何回收的资源，最常见的一类非托管资源是包装操作系统资源的对象，例如文件，窗口，网络连接，数据库连接，画刷，图标等。
+- 这类资源，垃圾回收器在清理的时候会调用Object.Finalize()方法。默认情况下，方法是空的，对于非托管对象，需要在此方法中编写回收非托管资源的代码，以便垃圾回收器正确回收资源。
+
+不能在析构函数中释放**托管资源**，因为析构函数的调用是由垃圾回收器完成的。在析构函数调用前，类包含的资源可能被回收了，从而导致无法预料的结果。
+
+DIspose方法由使用者调用，垃圾回收器不会对此类实例进行再次回收。
+
+
+
+##### 回收实例
+
+```c#
+class MyResource : IDisposable
+{
+    private IntPtr NativeResource { get; set; } = Marshal.AllocHGlobal(100); // 将托管对象送到非托管内存块
+    private Random ManagedResource { get; set; } = new Random();
+
+    private bool disposed = false;
+
+    public void Dispose ()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this); // 通知垃圾回收器不再调用终结器（析构函数）
+    }
+
+    ~MyResource()  // 用作忘记调用 Dispose() 时的补救措施
+    {
+        Dispose(false);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposed)
+        {
+            return;
+        }
+        if (disposing) // false: GC自动回收托管资源
+        {
+            // 清理托管资源
+            if (ManagedResource != null)
+            {
+                ManagedResource = null;
+            }
+        }
+        // 清理非托管资源
+        if (NativeResource != IntPtr.Zero)
+        {
+            Marshal.FreeHGlobal(NativeResource);
+            NativeResource = IntPtr.Zero;
+        }
+        disposed = true;
+    } 
+}
+```
+
+在new对象的时候，CLR会为对象创建一块内存空间，一旦对象不再引用，就会被垃圾回收器回收掉；
+
+- 对于没有实现IDispable接口的类来说，垃圾回收器会直接回收掉这片内存空间；
+- 实现了IDispable接口的类来说，在创建对象之初，CLR会将该对象的指针放在终结器的列表中；在GC回收内存之前，
