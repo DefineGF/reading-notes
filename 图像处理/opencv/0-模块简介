@@ -1,0 +1,34 @@
+### sources
+
+#### modules
+
+*   core：最核心的数据结构及运算；
+*   highgui：图像读取、显示、存储等UI接口；
+*   imgproc：图像处理的基本方法，包括图像几何变换、平滑、阈值分割、形态学处理、边缘检测、频率域处理等；
+*   features2d：提取图像特征；
+*   objdetect：目标检测；
+*   ml：常用的机器学习算法；
+*   video：针对视频的处理，如背景建模、运动物体跟踪、前景检测等等；
+
+### build
+
+源码包编译过的文件；
+
+### windows & VS 配置
+
+1. VC++ 目录
+
+   * 包含目录：引入头文件
+
+     F:\OpenCV\Install\opencv\_build\install\include 和 F:\OpenCV\Install\opencv\_build\install\include\opencv2
+
+   * 库目录：静态库
+
+     F:\OpenCV\Install\opencv\_build\install\x64\vc16\lib
+
+2. 链接器：
+
+   * 输入 -> 附加依赖项
+
+     F:\OpenCV\Install\opencv\build\x64\vc15\lib中的  .lib 文件；
+
