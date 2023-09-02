@@ -1,0 +1,97 @@
+##### C++函数的编译-命名编码（Name Mangling）
+
+不仅仅是函数，一般变量也会有类似的实现；
+
+```c++
+void display();
+void display(int);
+namespace ns {
+	void display();
+}
+class Demo {
+public:
+	void display();
+};
+int main() {
+	display();
+	display(1);
+	ns::display();
+	Demo obj;
+	obj.display();
+	return 0;
+}
+```
+
+如上只定义函数而不实现，会有如下错误：
+
+ > 无法解析外部符号 "void __cdecl xxx", 该符号在 _main() 中使用/
+
+
+
+##### 成员变量与成员函数
+
+- 成员变量：C++会将class 成员变量提取出来放到栈区的一个同名struct中，有相同的内存布局和字节对齐；
+- 成员函数：将成员函数提取放到代码区，同时为函数添加一个参数，即当前对象的指针，通过指针来访问成员变量；（类似于python中的成员函数 def func(self)；
+- 静态成员函数：将静态成员函数放在全局静态区；
+
+```c++
+class Test {
+private:
+	int n;
+public:
+	Test(int i) {
+		n = i;
+	}
+	int getN() { 
+		return n;
+	}
+	static void Print() {
+		printf("this is cls Test.\n");
+	}
+};
+Test a(10);
+a.getN();
+Test::Print();
+```
+
+编译为：
+
+```c++
+struct Test {
+	int n;
+};
+void Test_initialize(Test* pThis, int i) {
+	pThis -> n = i;
+}
+int Test_getN(Test* pThis) {
+	return pThis -> n;
+}
+void Test_Print() {
+	printf("this is cls Test.\n");
+}
+Test a; 
+Test_initialize(&a, 10);
+Test_getN(&a);
+Test_Print();
+```
+
+
+
+#### 对象布局
+
+参考文章：https://mp.weixin.qq.com/s/sufz7wxC_rwc1q3FXY-QMQ
+
+##### 普通类对象布局
+
+```c++
+struct Base {
+   Base() = default;
+   ~Base() = default;
+   
+   void Func() {}
+
+   int a;
+   int b;
+};
+```
+
