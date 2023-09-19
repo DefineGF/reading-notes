@@ -1,4 +1,4 @@
-#### Service
+### Service
 
 虽然service在后台运行，但是依旧实在主线程中进行所有操作；
 
@@ -73,8 +73,6 @@ context.stopService() 或者service中的 stopSelf来停止;
 销毁：bindService启动的service生命周期和与其绑定的client息息相关；
 
 当client销毁时候，service自动解除绑定并销毁；当然也可以通过context.unbindService()解除绑定；
-
-
 
 
 
