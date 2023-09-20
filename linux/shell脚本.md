@@ -81,7 +81,7 @@ grep:
 
 - -v 反向过滤
 
-awk 'print {'$2}'
+awk 'print {$2}'
 
 - awk：按行处理；
 - 
