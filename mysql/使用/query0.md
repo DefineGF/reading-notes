@@ -59,3 +59,43 @@ select sex, group_concat(name) from student_info group by sex with pollup;
 - where 针对数据库文件进行过滤，后者针对查询结果（前面已查询出的字段）进行过滤；
 - where不能使用字段别名，后者可以
 
+
+
+#### 子查询
+
+##### 实例1
+
+```sql
+# 查询学习java的同学
+select name from tb_student_info
+where course_id in (
+	select id from tb_course where course_name = 'java'
+);
+
+# 先单独执行内循环
+select tb_course where course_name = 'java';
++----+
+| id |
++----+
+|  1 |
++----+
+
+# 再执行外层循环
+select name from tb_student_info where course_id in (1);
++-------+
+| name  |
++-------+
+| Dany  |
+| Henry |
++-------+
+```
+
+
+
+#### 总结
+
+- 能用单表尽量用单表，即使需要用 group by、order by、 limit 等；
+- 不能用单表时候尽量用连接。但join 次数不宜过多，连接是接近指数级增长的关联过程；
+- 能不用子查询、笛卡尔积尽量不用，效率难以保证；
+- 自定义变量在复杂 SQL中会很有用；
+- 某些带聚合功能的查询需求应用窗口函数是个最优选择；
