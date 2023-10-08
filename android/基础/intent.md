@@ -34,11 +34,7 @@ downloadIntent.setData(Uri.parse(fileUrl));
 startService(downloadIntent);
 ```
 
-指明类名启动activity或者服务（启动服务务必使用显式Intent，且指定组件名称；
-
-隐式存在安全隐患，无法确定启动哪个服务，且无法确定服务是否启动。
-
-因此显示也避免无意中启动其他应用的service）
+指明类名启动activity或者服务（启动服务务必使用显式Intent，且指定组件名称；隐式存在安全隐患，无法确定启动哪个服务，且无法确定服务是否启动。因此显示也避免无意中启动其他应用的service）
 
 
 
