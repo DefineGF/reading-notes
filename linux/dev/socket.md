@@ -102,6 +102,11 @@ void FD_ZERO(fd_set *set);
 
 ##### 示例1
 
+服务端大致流程：
+
+1. 创建 socket；
+2. 
+
 server：
 
 ```cpp
