@@ -30,6 +30,13 @@ int main() {
     
     // 创建Socket
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    // 设置套接字为阻塞模式
+    int flags = fcntl(serverSocket, F_GETFL, 0);
+    if (flags == -1) {
+        std::cerr << "Failed to get socket flags" << std::endl;
+        close(serverSocket);
+        return 1;
+    }
     
     // 设置服务器地址
     serverAddress.sin_family = AF_INET;
