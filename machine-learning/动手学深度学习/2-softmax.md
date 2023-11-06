@@ -1,84 +1,159 @@
-#### 基础定义
+### 版本1
+
+###### 批量梯度下降
+
+```python
+def sgd(params, lr, batch_size):
+    """
+    优化算法
+    """
+    with torch.no_grad():
+        for param in params:
+            param -= lr * param.grad / batch_size
+            param.grad.zero_()
+```
+
+
+
+##### softmax
 
 ```python
 def softmax(X):
-    X_exp = X.exp()
-    partition = X_exp.sum(dim=1, keepdim=True)
-    return X_exp / partition  # 这里应用了广播机制
-
-
-def net(x):
-    """
-    定义模型
-    """
-    return softmax(torch.mm(x.view((-1, num_inputs)), W) + b)
-
-
-def cross_entropy(y_hat, y):
-    """
-    交叉熵损失函数
-    :return:
-    """
-    return - torch.log(y_hat.gather(1, y.view(-1, 1)))
-
-def accuracy(y_hat, y) -> float:
-    """
-    计算准确率:
-    (y_hat.argmax(dim=1) == y) 返回值类型是 ByteTensor，需要转换为 float类型的0 | 1值
-    :return:
-    """
-    return (y_hat.argmax(dim=1) == y).float().mean().item()
-
-
-def evaluate_accuracy(data_iter, net) -> float:
-    """
-    评价模型在整个数据集 data_iter 中的准确率
-    """
-    acc_sum, n = 0.0, 0
-    for X, y in data_iter:
-        acc_sum += (net(X).argmax(dim=1) == y).float().sum().item()
-        n += y.shape[0]
-    return acc_sum / n
+    x_exp = torch.exp(X)
+    part = x_exp.sum(1, keepdim=True)
+    tmp = x_exp / part
+    return tmp
 ```
 
-> 注：
->
-> torch.gather(dim, input):
->
-> dim = 0: 表示列方向；dim = 1 表示行方向
->
-> ```python
-> data = torch.arange(3, 12).view(3, 3)
-> '''
-> tensor([[ 3,  4,  5],
->      [ 6,  7,  8],
->      [ 9, 10, 11]])
-> '''
-> index = torch.tensor([[2, 1, 0]])
-> data.gather(0, index)
-> '''
-> tensor([[9, 7, 5]]) # 表示在列方向上：第0列，取index=2的元素；第1列，取index=1的元素；第2列，取index=0的元素；、
-> '''
-> data.gather(1, index)
-> '''
-> tensor([[5, 4, 3]]) # 表示在行方向上：由于 index 是行向量，因此取的都是第0行的，index=2, 1, 0 的元素
-> '''
-> 
-> # 将index转换成3 * 1 的形式
-> (data.gather(1, index.view(-1, 1))
-> '''
-> 其中： index.view 
-> tensor([[5],
->      [7],
->      [9]])
-> 最终结果：
-> tensor([[5],
->      [7],
->      [9]]) # 表示在行方向上，第0行取index=2，第1行取index=1，第2行取index=0的元素
-> '''
-> ```
+
+
+##### 交叉熵
+
+```python
+def cross_entry(y_hat, y):
+    """
+    定义交叉熵损失函数:
+    假设样本数为4，正确类别分别是 [1, 0, 1，2] = y
+    y_hat[range(len(y_hat)), y] 表示从0 到 3 个样本中，分别获取下标为 1，0，1，2 的元素值
+    """
+    return -1 * torch.log(y_hat[range(len(y_hat)), y])
+```
 
 
 
-#### 训练模型
+#### 精准度
+
+```python
+def accuracy(y_hat, y):
+    """
+    先将计算结果类型转换成标签类型；
+    和标签比较之后，将比较结果（bool）转换为标签类型，再取和
+    """
+    if len(y_hat.shape) > 1 and y_hat.shape[1] > 1:
+        y_hat = y_hat.argmax(axis=1)
+    cmp = y_hat.type(y.dtype) == y
+    return float(cmp.type(y.dtype).sum())
+
+
+def eval_accuracy(net, data_iter):
+    if isinstance(net, torch.nn.Module):
+        net.eval()  # 评估模式：不计算梯度
+    metric = Accumulator(2)
+    with torch.no_grad():
+        for x, y in data_iter:
+            metric.add(accuracy(net(x), y), y.numel())  # y.numel()返回当前样本的总数量
+    return metric[0] / metric[1]
+```
+
+
+
+#### 训练
+
+```python
+def train_epoch(net, train_iter, loss, updater):
+    """
+    返回：损失率，准确率
+    """
+    if isinstance(net, torch.nn.Module):
+        net.train()
+    metric = Accumulator(3)  # 损失总和，精准度总和，样本数
+    for x, y in train_iter:
+        y_hat = net(x)
+        ls = loss(y_hat, y)
+        if isinstance(updater, torch.optim.Optimizer):
+            # torch 内置优化器和损失函数
+            updater.zero_grad()
+            ls.mean().backward()
+            updater.step()
+        else:
+            ls.sum().backward()
+            updater(x.shape[0])
+        metric.add(float(ls.sum()), accuracy(y_hat, y), y.numel())
+    return metric[0] / metric[2], metric[1] / metric[2]
+
+
+def train_softmax(net, train_iter, test_iter, loss, num_epochs, updater):
+    for epoch in range(num_epochs):
+        train_metrics = train_epoch(net, train_iter, loss, updater)
+        test_acc = eval_accuracy(net, test_iter)
+        animator.add(epoch + 1, train_metrics + (test_acc,))
+        train_loss, train_acc = train_metrics
+        print("epoch: ", epoch, ", train_loss: ", train_loss, ", train_acc: ", train_acc)
+```
+
+
+
+#### 调用
+
+```python
+lr = 0.1  # 学习率
+
+def updater(batch_size):
+    return sgd([W, b], lr, batch_size)
+
+
+if __name__ == "__main__":
+    num_epoch = 3  # 训练次数
+    animator = Animator(xlabel='epoch', xlim=[1, num_epoch], ylim=[0.3, 0.9],
+                        legend=['train loss', 'train acc', 'test acc'])
+    train_softmax(net, train_iter, test_iter, cross_entry, num_epoch, updater)
+    animator.show()
+```
+
+
+
+### 版本2
+
+```python
+from torch import nn
+from my_softmax import *
+
+
+# 初始化模型参数
+def init_weights(m):
+    if type(m) == nn.Linear:
+        nn.init.normal_(m.weight, std=0.01)
+
+
+def test():
+    # 定义模型 并 初始化参数
+    net = nn.Sequential(nn.Flatten(), nn.Linear(784, 10))
+    net.apply(init_weights)
+
+    # 定义损失函数
+    # 当设置reduction='none' 时，CrossEntropyLoss函数将为每个样本返回一个损失值，而不是返回整个批次的平均损失。
+    # 具体来说，对于输入的每个样本，CrossEntropyLoss函数都会计算一个损失值，并将这些损失值作为一个张量返回
+    loss = nn.CrossEntropyLoss(reduction='none')
+
+    # 定义优化器
+    trainer = torch.optim.SGD(net.parameters(), lr=0.1)
+
+    # 记载数据
+    batch_size = 18
+    train_itr, test_itr = DataLoader.load_data_fashion_mnist(batch_size)
+
+    # 训练数据
+    num_epochs = 10
+    train_softmax(net, train_itr, test_itr, loss, num_epochs, trainer)
+```
 
